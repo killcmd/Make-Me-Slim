@@ -15,8 +15,8 @@ $WimBootPath = $CDir.Path+ "\WindowsCached\sources\boot.wim"
 $WindowsCached = $CDir.Path + "\WindowsCached"
 $WindowsSXSCached = $CDir.Path + "\WindowsCached\sources\sxs" 
 $WindowsScratch = $CDir.Path + "\WindowsScratch"
-$etfs = $CDir.Path + "\WindowsScratch\boot\etfsboot.com"
-$efisys = $CDir.Path + "\WindowsScratch\efi\microsoft\boot\efisys.bin"
+$etfs = $CDir.Path + "\WindowsCached\boot\etfsboot.com"
+$efisys = $CDir.Path + "\WindowsCached\efi\microsoft\boot\efisys.bin"
 $SysprepScratch = $CDir.Path + "\WindowsScratch\Windows\System32\Sysprep"
 $SCFile = $WorkPath + "\offlinereg.bat"
 $SetupCPath = $WindowsScratch + "\Windows\Setup\Scripts"
@@ -59,7 +59,7 @@ $Applist = @(
 )
 
 $Applist2 = @(
-	"Microsoft-Windows-Kernel-LA57-FoD-Package*"
+	#"Microsoft-Windows-Kernel-LA57-FoD-Package*"
 )
 
 $makeSC =@'
