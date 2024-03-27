@@ -63,6 +63,7 @@ $Applist2 = @(
 )
 
 $makeSC =@'
+@echo off
 echo Disabling Teams:
 "%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Windows\System32\config\SOFTWARE" "Microsoft\Windows\CurrentVersion\Communications" setvalue "ConfigureChatAutoInstall" 0 4
 echo Disabling Sponsored Apps:
@@ -96,6 +97,7 @@ echo Setting Time Service:
 '@
 
 $makeSetupC =@'
+@echo off
 del /s /q %WINDIR%\Setup\Scripts\SetupComplete.cmd
 '@
 
@@ -109,6 +111,10 @@ $mkbat = @"
 if ($CMDs -match "CreateISO") {
 
 	write-output "Setting up image workspace..."
+	
+	If (!(Test-Path $ModImagePath)) {
+		Remove-Item -Path $ModImagePath -Force
+	}
 	
 	If (!(Test-Path $WindowsCached)) {
 		New-Item -ItemType Directory -Path $WindowsCached
@@ -133,8 +139,6 @@ if ($CMDs -match "CreateISO") {
 		Get-AppXProvisionedPackage -path $WindowsScratch | where-object {$_.DisplayName -like $app} | Remove-AppxProvisionedPackage
 	}
 
-
-
 	foreach ($app2 in $Applist2)
 	{
 		Get-WindowsPackage -Path $WindowsScratch | where-object {$_.PackageName -like $app2} | Remove-WindowsPackage
@@ -144,7 +148,6 @@ if ($CMDs -match "CreateISO") {
 		New-Item -ItemType Directory -Path $SetupCPath
 	}
 	$makeSetupC | Out-File -filepath $SetupCFile -Encoding Oem
-
 
 	$makeSC | Out-File -filepath $SCFile -Encoding Oem
 	start-process "CMD.exe" -args @("/C","`"$SCFile`"") -Wait
