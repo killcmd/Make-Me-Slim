@@ -1,5 +1,6 @@
 # Develop Image script
 ### *Based on Tiny 11 Image Creator*
+Works on all known builds.
 
 ## How-to
 
