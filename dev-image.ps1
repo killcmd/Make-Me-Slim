@@ -8,11 +8,11 @@ $currentTime = Get-Date -format "dd-MMM-yyyy_HH-mm-ss"
 $CDir = get-location
 $WorkPath = $CDir.Path
 $Autounattend = $CDir.Path + "\xml\autounattend.xml"
-$ImagePath = $CDir.Path + "\Windows_23H2.iso"
-$ModImagePath = $CDir.Path + "\Windows_23H2-trimmed.iso"
-$WimPath = $CDir.Path + "\WindowsCached\sources\install.wim"
-$Wim2Path = $CDir.Path + "\WindowsCached\sources\install.esd"
-$Wim3Path = $CDir.Path + "\WindowsCached\sources\install.wim-2"
+$WimPathArg = (get-childitem -Path ".\WindowsCached\sources\" | Where-Object {$_.Name -eq "install.wim" -or $_.Name -eq "install.esd"}).FullName
+$WimPath = $WimPathArg
+$ImagePath = (get-childitem -Path ".\input\" | Where-Object {$_.Name -like "*.iso"}).FullName
+$ModImagePath = $CDir.Path + "\output\Windows_trimmed.iso"
+$Wim2Path = $CDir.Path + "\WindowsCached\sources\install-1.esd"
 $WimBootPath = $CDir.Path+ "\WindowsCached\sources\boot.wim"
 $WindowsCached = $CDir.Path + "\WindowsCached"
 $WindowsSXSCached = $CDir.Path + "\WindowsCached\sources\sxs" 
@@ -29,25 +29,59 @@ $dismbat = $CDir.Path + "\dism.bat"
 $regfile = $CDir.Path + "\pins.reg"	
 $appxlog = $CDir.Path + "\appx-remove_$currentTime.txt"	
 $WindowsPackageLog = $CDir.Path + "\wplog_$currentTime.txt"	
+$OOBEappsDir = $CDir.Path + "\oobe\Setup"
+$OOBEapps = $OOBEappsDir + "\*"
 
+# $Applist = @(
+	# "*Microsoft.GamingApp*",
+	# "*Microsoft.GetHelp*",
+	# "*Microsoft.Getstarted*",
+	# "*Microsoft.MicrosoftOfficeHub*",
+	# "*Microsoft.MicrosoftSolitaireCollection*",
+	# "*Microsoft.People*",
+	# "*Microsoft.WindowsStore*",
+	# "*Microsoft.StorePurchase*",
+	# "*Microsoft.OutlookFor*",
+	# "*Microsoft.WindowsMaps*",
+	# "*Microsoft.WindowsAlarms*",
+	# "*Microsoft.XboxSpeechToTextOverlay*",
+	# "*Microsoft.XboxGameOverlay*",
+	# "*Microsoft.XboxGamingOverlay*",
+	# "*Microsoft.XboxIdentityProvider*",
+	# "*Microsoft.Xbox.TCUI*",
+	# "*Microsoft.Todos*",
+	# "*Microsoft.Bing*",
+	# "*Microsoft.Messaging*",
+	# "*Microsoft.BingFinance*",
+	# "*Microsoft.WindowsScan*",
+	# "*Microsoft.Reader*",
+	# "*Microsoft.CommsPhone*",
+	# "*Microsoft.ConnectivityStore*",
+	# "*Microsoft.WindowsReadingList*",
+	# "*Clipchamp.Clipchamp*",
+	# "*Microsoft.SkypeApp*",
+	# "*microsoft.windowscommunicationsapps*",
+	# "*microsoft.WindowsSoundRecorder*",
+	# "*Microsoft.WindowsFeedbackHub*",
+	# "*MicrosoftCorporationII.MicrosoftFamily*",
+	# "*Microsoft.YourPhone*",
+	# "*MicrosoftTeams*",
+	# "*Microsoft.549981C3F5F10*",
+	# "*Microsoft.Windows.DevHome*",
+	# "*Microsoft.ZuneMusic*",
+	# "*Microsoft.Ai.Copilot*",
+	# "*Microsoft.ZuneVideo*"
+# )
 
 $Applist = @(
-	"*Microsoft.GamingApp*",
 	"*Microsoft.GetHelp*",
 	"*Microsoft.Getstarted*",
 	"*Microsoft.MicrosoftOfficeHub*",
 	"*Microsoft.MicrosoftSolitaireCollection*",
 	"*Microsoft.People*",
-	"*Microsoft.WindowsStore*",
-	"*Microsoft.StorePurchase*",
 	"*Microsoft.OutlookFor*",
 	"*Microsoft.WindowsMaps*",
 	"*Microsoft.WindowsAlarms*",
-	"*Microsoft.XboxSpeechToTextOverlay*",
-	"*Microsoft.XboxGameOverlay*",
-	"*Microsoft.XboxGamingOverlay*",
-	"*Microsoft.XboxIdentityProvider*",
-	"*Microsoft.Xbox.TCUI*",
 	"*Microsoft.Todos*",
 	"*Microsoft.Bing*",
 	"*Microsoft.Messaging*",
@@ -63,13 +97,15 @@ $Applist = @(
 	"*microsoft.WindowsSoundRecorder*",
 	"*Microsoft.WindowsFeedbackHub*",
 	"*MicrosoftCorporationII.MicrosoftFamily*",
+	"*Microsoft.PowerAutomateDesktop*",
 	"*Microsoft.YourPhone*",
-	"*MicrosoftTeams*",
+	"*Teams*",
 	"*Microsoft.549981C3F5F10*",
 	"*Microsoft.Windows.DevHome*",
 	"*Microsoft.ZuneMusic*",
-	"*Microsoft.Ai.Copilot*",
-	"*Microsoft.ZuneVideo*"
+	"*Microsoft.Windows.Ai.Copilot.Provider*",
+	"*Microsoft.ZuneVideo*",
+	"*MicrosoftWindows.CrossDevice*"
 )
 
 $Applist2 = @(
@@ -115,11 +151,14 @@ echo Setting Time Service:
 
 $makeSetupC =@'
 @echo off
+setlocal enableDelayedExpansion 
+
+%WINDIR%\Setup\Scripts\SteamSetup.exe /S
 del /s /q %WINDIR%\Setup\Scripts\SetupComplete.cmd
 '@
 
 $mkbat = @"
-@echo off
+@echo off 
 "%~dp0bin\oscdimg.exe" -m -o -u2 -udfver102 -bootdata:2#p0,e,b"$etfs"#pEF,e,b"$efisys" "$WindowsCached" "$ModImagePath"
 "@
 
@@ -148,19 +187,21 @@ if ($CMDs -match "CreateISO") {
 		New-Item -ItemType Directory -Path $WindowsScratch
 	}
 	
-	$mountResult = Mount-DiskImage -ImagePath $ImagePath
+	$mountResult = Mount-DiskImage -ImagePath "$ImagePath"
 	$driveLetter = ($mountResult | Get-Volume).DriveLetter
 	$ExtractPath = $driveLetter + ":\*"
 	Copy-Item -Path "$ExtractPath" -Destination $WindowsCached -Recurse -Force -Verbose -PassThru | Set-ItemProperty -name isreadonly -Value $false
-	Dismount-DiskImage -ImagePath $ImagePath
-	Get-WindowsImage -ImagePath $WimPath
-	$indexNumber = read-host "Please enter your chosen Index Number:"
-	Mount-WindowsImage -ImagePath $WimPath -Index $indexNumber -Path $WindowsScratch
+	Dismount-DiskImage -ImagePath "$ImagePath"
+	Get-WindowsImage -ImagePath (get-childitem -Path ".\WindowsCached\sources\" | Where-Object {$_.Name -eq "install.wim" -or $_.Name -eq "install.esd"}).FullName
+	$indexNumber = read-host "Please enter your chosen Index Number"
+
+	Mount-WindowsImage -ImagePath (get-childitem -Path ".\WindowsCached\sources\" | Where-Object {$_.Name -eq "install.wim" -or $_.Name -eq "install.esd"}).FullName -Index $indexNumber -Path "$WindowsScratch"
 
 
 	foreach ($app in $Applist)
 	{
 		Get-AppXProvisionedPackage -path $WindowsScratch | where-object {$_.PackageName -like $app} | Remove-AppxProvisionedPackage -LogPath $appxlog
+		Get-AppXPackage -path $WindowsScratch -AllUsers | where-object {$_.PackageName -like $app} | Remove-AppxProvisionedPackage -LogPath $appxlog -AllUsers
 	}
 
 	foreach ($app2 in $Applist2)
@@ -170,6 +211,7 @@ if ($CMDs -match "CreateISO") {
 	
 	If (!(Test-Path $SetupCPath)) {
 		New-Item -ItemType Directory -Path $SetupCPath
+		Copy-Item -Path $OOBEapps -Destination $SetupCPath 
 	}
 	$makeSetupC | Out-File -filepath $SetupCFile -Encoding Oem
 
@@ -187,15 +229,15 @@ if ($CMDs -match "CreateISO") {
 	Dismount-WindowsImage -Path $WindowsScratch -Save
 
 $dismcmd = @" 
-"%WINDIR%\System32\dism.exe" /Export-Image /SourceImageFile:"$WimPath" /SourceIndex:$indexNumber /DestinationImageFile:"$Wim2Path" /compress:recovery /CheckIntegrity
+"%WINDIR%\System32\dism.exe" /Export-Image /SourceImageFile:(get-childitem -Path ".\WindowsCached\sources\" | Where-Object {$_.Name -eq "install.wim" -or $_.Name -eq "install.esd"}).FullName /SourceIndex:$indexNumber /DestinationImageFile:"$Wim2Path" /compress:recovery /CheckIntegrity
 "@
 
 	# $dismcmd | Out-File -filepath $dismbat -Encoding Oem
 	# start-process "CMD.exe" -args @("/C","`"$dismbat`"") -Wait
 	# Remove-Item -Path $dismbat -Force
-	Export-WindowsImage -SourceImagePath $WimPath -SourceIndex $indexNumber -DestinationImagePath $Wim3Path -CompressionType max
-	Remove-Item -Path $WimPath -Force
-	Move-Item $Wim3Path $WimPath
+	Export-WindowsImage -SourceImagePath (get-childitem -Path ".\WindowsCached\sources\" | Where-Object {$_.Name -eq "install.wim" -or $_.Name -eq "install.esd"}).FullName -SourceIndex $indexNumber -DestinationImagePath "$Wim2Path" -CompressionType max
+	Remove-Item -Path (get-childitem -Path ".\WindowsCached\sources\" | Where-Object {$_.Name -eq "install.wim" -or $_.Name -eq "install.esd"}).FullName -Force
+	Move-Item "$Wim2Path" ".\WindowsCached\sources\install.esd"
 	# Mount-WindowsImage -ImagePath $WimBootPath -Index 2 -Path $WindowsScratch
 	# Dismount-WindowsImage -Path $WindowsScratch -Save
 
