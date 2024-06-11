@@ -4,6 +4,21 @@ Param (
 [Parameter(Mandatory=$true)]
 $CMDs
 )
+$adminSID = New-Object System.Security.Principal.SecurityIdentifier("S-1-5-32-544")
+$adminGroup = $adminSID.Translate([System.Security.Principal.NTAccount])
+$myWindowsID=[System.Security.Principal.WindowsIdentity]::GetCurrent()
+$myWindowsPrincipal=new-object System.Security.Principal.WindowsPrincipal($myWindowsID)
+$adminRole=[System.Security.Principal.WindowsBuiltInRole]::Administrator
+if (! $myWindowsPrincipal.IsInRole($adminRole))
+{
+    Write-Host "Restarting image creator as admin in a new window, you can close this one."
+    $newProcess = new-object System.Diagnostics.ProcessStartInfo "PowerShell";
+    $newProcess.Arguments = $myInvocation.MyCommand.Definition;
+    $newProcess.Verb = "runas";
+    [System.Diagnostics.Process]::Start($newProcess);
+    exit
+}
+
 $currentTime = Get-Date -format "dd-MMM-yyyy_HH-mm-ss"
 $CDir = get-location
 $WorkPath = $CDir.Path
@@ -31,47 +46,6 @@ $appxlog = $CDir.Path + "\appx-remove_$currentTime.txt"
 $WindowsPackageLog = $CDir.Path + "\wplog_$currentTime.txt"	
 $OOBEappsDir = $CDir.Path + "\oobe\Setup"
 $OOBEapps = $OOBEappsDir + "\*"
-
-# $Applist = @(
-	# "*Microsoft.GamingApp*",
-	# "*Microsoft.GetHelp*",
-	# "*Microsoft.Getstarted*",
-	# "*Microsoft.MicrosoftOfficeHub*",
-	# "*Microsoft.MicrosoftSolitaireCollection*",
-	# "*Microsoft.People*",
-	# "*Microsoft.WindowsStore*",
-	# "*Microsoft.StorePurchase*",
-	# "*Microsoft.OutlookFor*",
-	# "*Microsoft.WindowsMaps*",
-	# "*Microsoft.WindowsAlarms*",
-	# "*Microsoft.XboxSpeechToTextOverlay*",
-	# "*Microsoft.XboxGameOverlay*",
-	# "*Microsoft.XboxGamingOverlay*",
-	# "*Microsoft.XboxIdentityProvider*",
-	# "*Microsoft.Xbox.TCUI*",
-	# "*Microsoft.Todos*",
-	# "*Microsoft.Bing*",
-	# "*Microsoft.Messaging*",
-	# "*Microsoft.BingFinance*",
-	# "*Microsoft.WindowsScan*",
-	# "*Microsoft.Reader*",
-	# "*Microsoft.CommsPhone*",
-	# "*Microsoft.ConnectivityStore*",
-	# "*Microsoft.WindowsReadingList*",
-	# "*Clipchamp.Clipchamp*",
-	# "*Microsoft.SkypeApp*",
-	# "*microsoft.windowscommunicationsapps*",
-	# "*microsoft.WindowsSoundRecorder*",
-	# "*Microsoft.WindowsFeedbackHub*",
-	# "*MicrosoftCorporationII.MicrosoftFamily*",
-	# "*Microsoft.YourPhone*",
-	# "*MicrosoftTeams*",
-	# "*Microsoft.549981C3F5F10*",
-	# "*Microsoft.Windows.DevHome*",
-	# "*Microsoft.ZuneMusic*",
-	# "*Microsoft.Ai.Copilot*",
-	# "*Microsoft.ZuneVideo*"
-# )
 
 $Applist = @(
 	"*Microsoft.GetHelp*",
@@ -153,7 +127,6 @@ $makeSetupC =@'
 @echo off
 setlocal enableDelayedExpansion 
 
-%WINDIR%\Setup\Scripts\SteamSetup.exe /S
 del /s /q %WINDIR%\Setup\Scripts\SetupComplete.cmd
 '@
 
@@ -190,7 +163,7 @@ if ($CMDs -match "CreateISO") {
 	$mountResult = Mount-DiskImage -ImagePath "$ImagePath"
 	$driveLetter = ($mountResult | Get-Volume).DriveLetter
 	$ExtractPath = $driveLetter + ":\*"
-	Copy-Item -Path "$ExtractPath" -Destination $WindowsCached -Recurse -Force -Verbose -PassThru | Set-ItemProperty -name isreadonly -Value $false
+	Copy-Item -Path "$ExtractPath" -Destination $WindowsCached -Recurse -Force -Verbose -PassThru | Set-ItemProperty -name isreadonly -Value $false -ErrorAction Ignore
 	Dismount-DiskImage -ImagePath "$ImagePath"
 	Get-WindowsImage -ImagePath (get-childitem -Path ".\WindowsCached\sources\" | Where-Object {$_.Name -eq "install.wim" -or $_.Name -eq "install.esd"}).FullName
 	$indexNumber = read-host "Please enter your chosen Index Number"
@@ -200,31 +173,35 @@ if ($CMDs -match "CreateISO") {
 
 	foreach ($app in $Applist)
 	{
-		Get-AppXProvisionedPackage -path $WindowsScratch | where-object {$_.PackageName -like $app} | Remove-AppxProvisionedPackage -LogPath $appxlog
-		Get-AppXPackage -path $WindowsScratch -AllUsers | where-object {$_.PackageName -like $app} | Remove-AppxProvisionedPackage -LogPath $appxlog -AllUsers
+		Get-AppXProvisionedPackage -path $WindowsScratch | where-object {$_.PackageName -like $app} | Remove-AppxProvisionedPackage -LogPath $appxlog -ErrorAction Ignore
 	}
 
 	foreach ($app2 in $Applist2)
 	{
-		Get-WindowsPackage -Path $WindowsScratch | where-object {$_.PackageName -like $app2} | Remove-WindowsPackage -LogPath $WindowsPackageLog
+		Get-WindowsPackage -Path $WindowsScratch | where-object {$_.PackageName -like $app2} | Remove-WindowsPackage -LogPath $WindowsPackageLog -ErrorAction Ignore
 	}
 	
 	If (!(Test-Path $SetupCPath)) {
 		New-Item -ItemType Directory -Path $SetupCPath
-		Copy-Item -Path $OOBEapps -Destination $SetupCPath 
+		Copy-Item -Path $OOBEapps -Destination $SetupCPath -Verbose
 	}
 	$makeSetupC | Out-File -filepath $SetupCFile -Encoding Oem
 
 	$mkreg1 | Out-File -filepath $regfile -Encoding Oem
 	$makeSC | Out-File -filepath $SCFile -Encoding Oem
 	start-process "CMD.exe" -args @("/C","`"$SCFile`"") -Wait
-	Remove-Item -Path $SCFile -Force
-	Remove-Item -Path $regfile -Force
-	Remove-Item -Path $StartPin -Force
-	
+	Remove-Item -Path $SCFile -Force -ErrorAction Ignore
+	Remove-Item -Path $regfile -Force -ErrorAction Ignore
+	Remove-Item -Path $StartPin -Force -ErrorAction Ignore
+	takeown /f "$PSScriptRoot\WindowsScratch\Windows\System32\OneDriveSetup.exe" /a
+	takeown /f "$PSScriptRoot\WindowsScratch\Windows\System32\OneDrive.ico" /a
+	icacls "$PSScriptRoot\WindowsScratch\Windows\System32\OneDriveSetup.exe" /grant:r administrators:F
+	icacls "$PSScriptRoot\WindowsScratch\Windows\System32\OneDrive.ico" /grant:r administrators:F
+	Remove-Item -Path "$PSScriptRoot\WindowsScratch\Windows\System32\OneDriveSetup.exe" -Force -Verbose -ErrorAction Ignore
+	Remove-Item -Path "$PSScriptRoot\WindowsScratch\Windows\System32\OneDrive.ico" -Force -Verbose -ErrorAction Ignore
 
-	Copy-Item -Path $Autounattend  -Destination $SysprepScratch -Force -Verbose
-	Repair-WindowsImage -Path $WindowsScratch -StartComponentCleanup -ResetBase -LimitAccess
+	Copy-Item -Path $Autounattend  -Destination $SysprepScratch -Force -Verbose -ErrorAction Ignore
+	Repair-WindowsImage -Path $WindowsScratch -StartComponentCleanup -ResetBase -LimitAccess 
 	Enable-WindowsOptionalFeature -Path $WindowsScratch -FeatureName "NetFx3" -Source $WindowsSXSCached -LimitAccess
 	Dismount-WindowsImage -Path $WindowsScratch -Save
 
@@ -232,19 +209,14 @@ $dismcmd = @"
 "%WINDIR%\System32\dism.exe" /Export-Image /SourceImageFile:(get-childitem -Path ".\WindowsCached\sources\" | Where-Object {$_.Name -eq "install.wim" -or $_.Name -eq "install.esd"}).FullName /SourceIndex:$indexNumber /DestinationImageFile:"$Wim2Path" /compress:recovery /CheckIntegrity
 "@
 
-	# $dismcmd | Out-File -filepath $dismbat -Encoding Oem
-	# start-process "CMD.exe" -args @("/C","`"$dismbat`"") -Wait
-	# Remove-Item -Path $dismbat -Force
 	Export-WindowsImage -SourceImagePath (get-childitem -Path ".\WindowsCached\sources\" | Where-Object {$_.Name -eq "install.wim" -or $_.Name -eq "install.esd"}).FullName -SourceIndex $indexNumber -DestinationImagePath "$Wim2Path" -CompressionType max
-	Remove-Item -Path (get-childitem -Path ".\WindowsCached\sources\" | Where-Object {$_.Name -eq "install.wim" -or $_.Name -eq "install.esd"}).FullName -Force
+	Remove-Item -Path (get-childitem -Path ".\WindowsCached\sources\" | Where-Object {$_.Name -eq "install.wim" -or $_.Name -eq "install.esd"}).FullName -Force -ErrorAction Ignore
 	Move-Item "$Wim2Path" ".\WindowsCached\sources\install.esd"
-	# Mount-WindowsImage -ImagePath $WimBootPath -Index 2 -Path $WindowsScratch
-	# Dismount-WindowsImage -Path $WindowsScratch -Save
 
 	$mkbat | Out-File  -filepath $batchfile -Encoding Oem
 	Copy-Item -Path $Autounattend  -Destination $WindowsCached -Force -Verbose
 	start-process "CMD.exe" -args @("/C","`"$batchfile`"") -Wait
-	Remove-Item -Path $batchfile -Force
+	Remove-Item -Path $batchfile -Force -ErrorAction Ignore
 
 	write-output "Creation completed!"
 
@@ -260,6 +232,6 @@ if ($CMDs -match "Fix") {
 	Clear-WindowsCorruptMountPoint
 
 
-	Remove-Item -Path $WindowsCached -Force -Recurse
-	Remove-Item -Path $WindowsScratch -Force -Recurse
+	Remove-Item -Path $WindowsCached -Force -Recurse -ErrorAction Ignore
+	Remove-Item -Path $WindowsScratch -Force -Recurse -ErrorAction Ignore
 }
