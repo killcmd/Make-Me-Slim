@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <unattend xmlns="urn:schemas-microsoft-com:unattend" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
-	<!--https://schneegans.de/windows/unattend-generator/?LanguageMode=Unattended&UILanguage=en-US&UserLocale=en-US&KeyboardLayout=0409%3A00000409&GeoLocation=244&ProcessorArchitecture=amd64&ComputerNameMode=Random&TimeZoneMode=Implicit&PartitionMode=Custom&DiskpartScript=SELECT+DISK%3D0%0D%0ACLEAN%0D%0ACONVERT+GPT%0D%0ACREATE+PARTITION+EFI+SIZE%3D300%0D%0AFORMAT+QUICK+FS%3DFAT32+LABEL%3D%22System%22%0D%0ACREATE+PARTITION+MSR+SIZE%3D16%0D%0ACREATE+PARTITION+PRIMARY%0D%0ASHRINK+MINIMUM%3D1000%0D%0AFORMAT+QUICK+FS%3DNTFS+LABEL%3D%22Windows%22%0D%0ACREATE+PARTITION+PRIMARY%0D%0AFORMAT+QUICK+FS%3DNTFS+LABEL%3D%22Recovery%22%0D%0ASET+ID%3D%22de94bba4-06d1-4d40-a16a-bfd50179d6ac%22%0D%0AGPT+ATTRIBUTES%3D0x8000000000000001&InstallToMode=Available&WindowsEditionMode=Interactive&UserAccountMode=Interactive&PasswordExpirationMode=Default&LockoutMode=Default&EnableLongPaths=true&HardenSystemDriveAcl=true&DisableAppSuggestions=true&WifiMode=Interactive&ExpressSettings=DisableAll&WdacMode=Skip-->
+	<!--https://schneegans.de/windows/unattend-generator/?LanguageMode=Unattended&UILanguage=en-US&UserLocale=en-US&KeyboardLayout=0409%3A00000409&GeoLocation=244&ProcessorArchitecture=amd64&ComputerNameMode=Random&TimeZoneMode=Implicit&PartitionMode=Unattended&PartitionLayout=GPT&EspSize=300&RecoveryMode=Partition&RecoverySize=1000&WindowsEditionMode=Interactive&UserAccountMode=Unattended&AutoLogonMode=Builtin&BuiltinAdministratorPassword=%243tup%40dm&PasswordExpirationMode=Default&LockoutMode=Default&EnableLongPaths=true&HardenSystemDriveAcl=true&AllowPowerShellScripts=true&WifiMode=Interactive&ExpressSettings=DisableAll&WdacMode=Skip-->
 	<settings pass="offlineServicing"></settings>
 	<settings pass="windowsPE">
 		<component name="Microsoft-Windows-International-Core-WinPE" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
@@ -15,7 +15,10 @@
 		<component name="Microsoft-Windows-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
 			<ImageInstall>
 				<OSImage>
-					<InstallToAvailablePartition>true</InstallToAvailablePartition>
+					<InstallTo>
+						<DiskID>0</DiskID>
+						<PartitionID>3</PartitionID>
+					</InstallTo>
 				</OSImage>
 			</ImageInstall>
 			<UserData>
@@ -96,6 +99,11 @@
 					<Order>2</Order>
 					<Path>icacls.exe C:\ /remove:g "*S-1-5-11"</Path>
 				</RunSynchronousCommand>
+				<RunSynchronousCommand wcm:action="add">
+					<Order>3</Order>
+					<Path>powershell.exe -NoProfile -Command "Set-ExecutionPolicy -Scope 'LocalMachine' -ExecutionPolicy 'RemoteSigned' -Force;"</Path>
+				</RunSynchronousCommand>
+			</RunSynchronous>
 		</component>
 	</settings>
 	<settings pass="auditSystem"></settings>
@@ -108,11 +116,32 @@
 			<UserLocale>en-US</UserLocale>
 		</component>
 		<component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+			<UserAccounts>
+				<AdministratorPassword>
+					<Value>$3xLeX1a</Value>
+					<PlainText>true</PlainText>
+				</AdministratorPassword>
+			</UserAccounts>
+			<AutoLogon>
+				<Username>Administrator</Username>
+				<Enabled>true</Enabled>
+				<LogonCount>1</LogonCount>
+				<Password>
+					<Value>$3tup@dm</Value>
+					<PlainText>true</PlainText>
+				</Password>
+			</AutoLogon>
 			<OOBE>
 				<ProtectYourPC>3</ProtectYourPC>
 				<HideEULAPage>true</HideEULAPage>
 				<HideWirelessSetupInOOBE>false</HideWirelessSetupInOOBE>
 			</OOBE>
+			<FirstLogonCommands>
+				<SynchronousCommand wcm:action="add">
+					<Order>1</Order>
+					<CommandLine>reg.exe add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v AutoLogonCount /t REG_DWORD /d 0 /f</CommandLine>
+				</SynchronousCommand>
+			</FirstLogonCommands>
 		</component>
 	</settings>
 </unattend>
