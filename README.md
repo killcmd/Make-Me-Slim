@@ -13,3 +13,7 @@ powershell.exe -ep bypass .\dev-image.ps1 [arguments]
 *CreateISO* : Creates the new image.
 
 *Fix* : Purges the Workspace without saving.
+
+
+
+## Enabled Admin account password is $3xLeX1a
