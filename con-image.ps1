@@ -30,21 +30,17 @@ $WimBootPath = $CDir.Path+ "\WindowsCached\sources\boot.wim"
 $WindowsCached = $CDir.Path + "\WindowsCached"
 $WindowsSXSCached = $CDir.Path + "\WindowsCached\sources\sxs" 
 $WindowsScratch = $CDir.Path + "\WindowsScratch"
-$StartPin = $WindowsScratch + "Users\Default\Appdata\Local\Packages\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\LocalState\Start.bin"
 $etfs = $CDir.Path + "\WindowsCached\boot\etfsboot.com"
 $efisys = $CDir.Path + "\WindowsCached\efi\microsoft\boot\efisys.bin"
 $SysprepScratch = $CDir.Path + "\WindowsScratch\Windows\System32\Sysprep"
 $SCFile = $WorkPath + "\offlinereg.bat"
 $SetupCPath = $WindowsScratch + "\Windows\Setup\Scripts"
 $SetupCFile = $WindowsScratch + "\Windows\Setup\Scripts\SetupComplete.cmd"
-$batchfile = $CDir.Path + "\mkimg.bat"	
 $dismbat = $CDir.Path + "\dism.bat"	
-$regfile = $CDir.Path + "\pins.reg"	
 $appxlog = $CDir.Path + "\appx-remove_$currentTime.txt"	
 $WindowsPackageLog = $CDir.Path + "\wplog_$currentTime.txt"	
 $OOBEappsDir = $CDir.Path + "\oobe\Setup"
 $OOBEapps = $OOBEappsDir + "\*"
-
 
 $DisabledAPPS = @(
 "Microsoft.WindowsStore",
@@ -121,63 +117,11 @@ $Applist2 = @(
 	"Microsoft-Windows-Kernel-LA57-FoD-Package"
 )
 
-$makeSC = @"
-@echo off
-echo Disabling Teams:
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Windows\System32\config\SOFTWARE" "Microsoft\Windows\CurrentVersion\Communications" setvalue "ConfigureChatAutoInstall" 0 4
-echo Disabling Sponsored Apps:
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" setvalue "OemPreInstalledAppsEnabled" 0 4
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" setvalue "PreInstalledAppsEnabled" 0 4
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" setvalue "SilentInstalledAppsEnabled" 0 4
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Windows\System32\config\SOFTWARE" "Policies\Microsoft\Windows\CloudContent" setvalue "DisableWindowsConsumerFeatures" 1 4
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Windows\System32\config\SOFTWARE" " " import %~dp0pins.reg
-echo Enabling Local Accounts on OOBE:
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Windows\System32\config\SOFTWARE" "Microsoft\Windows\CurrentVersion\OOBE" setvalue "BypassNRO" 1 4
-echo Disabling Reserved Storage:
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Windows\System32\config\SOFTWARE" "Microsoft\Windows\CurrentVersion\ReserveManager" setvalue "ShippedWithReserves" 0 4
-echo Disable Copilot:
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Windows\System32\config\SOFTWARE" "Policies\Microsoft\Windows\WindowsCopilot" setvalue "TurnOffWindowsCopilot" 1 4
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot" setvalue "TurnOffWindowsCopilot" 1 4
-echo Disabling Chat icon:
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Windows\System32\config\SOFTWARE" "Policies\Microsoft\Windows\Windows Chat" setvalue "ChatIcon" 3 4
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" setvalue "TaskbarMn" 0 4
-echo Disabling Search icon:
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" setvalue "ShowCortanaButton" 0 4
-echo Disabling TaskViews icon:
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" setvalue "ShowTaskViewButton" 0 4
-echo Aligning Taskbar to left:
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" setvalue "TaskbarAl" 0 4
-echo Disabling Widgets icon:
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" setvalue "TaskbarDa" 0 4
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Taskband\AuxilliaryPins" setvalue "MailPin" 0 4
-
-echo Disabling Hibernate:
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Windows\System32\config\SYSTEM" "CurrentControlSet\Control\Power" setvalue "HibernateEnabled" 0 4
-echo Setting Time Service:
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Windows\System32\config\SYSTEM" "CurrentControlSet\Services\W32Time" setvalue "Start" 2 4
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Windows\System32\config\SYSTEM" "CurrentControlSet\Services\tzautoupdate" setvalue "Start" 2 4
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Windows\System32\config\SYSTEM" "CurrentControlSet\Services\W32Time\Parameters" setvalue "Type" "NTP" 1
-"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Windows\System32\config\SYSTEM" "CurrentControlSet\Services\W32Time\Parameters" setvalue "NtpServer" "time.windows.com,pool.ntp.org" 1
-"@
-
 $makeSetupC =@'
 @echo off
 setlocal enableDelayedExpansion 
 
 del /s /q %WINDIR%\Setup\Scripts\SetupComplete.cmd
-'@
-
-$mkbat = @"
-@echo off 
-"%~dp0bin\oscdimg.exe" -m -o -u2 -udfver102 -bootdata:2#p0,e,b"$etfs"#pEF,e,b"$efisys" "$WindowsCached" "$ModImagePath"
-"@
-
-$mkreg1 =@'
-Windows Registry Editor Version 5.00
-
-[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\PolicyManager\current\device\Start]
-"ConfigureStartPins"="{"pinnedList":[{"packagedAppId":"windows.immersivecontrolpanel_cw5n1h2txyewy!microsoft.windows.immersivecontrolpanel"}]}"
-"ConfigureStartPins_ProviderSet"=dword:00000001
 '@
 
 
@@ -210,26 +154,334 @@ if ($CMDs -match "CreateISO") {
 
 	foreach ($app in $Applist)
 	{
-		Get-AppXProvisionedPackage -path $WindowsScratch | where-object {$_.DisplayName -match $app} | Remove-AppxProvisionedPackage -LogPath $appxlog -ErrorAction Ignore
+		try{
+		write-output "Uninstalling $($app)"
+		Get-AppXProvisionedPackage -path $WindowsScratch | where-object {$_.DisplayName -match $app} | Remove-AppxProvisionedPackage -LogPath $appxlog -ErrorAction Ignore >null
+
+		}
+		catch {
+		Write-Error "Uninstalling $($app) failed"
+		}
 	}
 
 	foreach ($app2 in $Applist2)
 	{
-		Get-WindowsPackage -Path $WindowsScratch | where-object {$_.PackageName -match $app2} | Remove-WindowsPackage -LogPath $WindowsPackageLog -ErrorAction Ignore
+		
+		try{
+		write-output "Uninstalling $($app2)"
+		Get-WindowsPackage -Path $WindowsScratch | where-object {$_.PackageName -match $app2} | Remove-WindowsPackage -LogPath $WindowsPackageLog -ErrorAction Ignore >null
+
+		}
+		catch {
+		Write-Error "Uninstalling $($app2) failed"
+		}
+		
 	}
 	
 	If (!(Test-Path $SetupCPath)) {
 		New-Item -ItemType Directory -Path $SetupCPath
 		Copy-Item -Path $OOBEapps -Destination $SetupCPath -Verbose
 	}
-	$makeSetupC | Out-File -filepath $SetupCFile -Encoding Oem
+	
+ 
+ 
+	write-output "Disabling Teams:"
+ 
+ 	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Windows\System32\config\SOFTWARE" "Microsoft\Windows\CurrentVersion\Communications" setvalue "ConfigureChatAutoInstall" 0 4
+	}
+	
+	catch {
+	Write-Error "ConfigureChatAutoInstall Failed"
 
-	$mkreg1 | Out-File -filepath $regfile -Encoding Oem
-	$makeSC | Out-File -filepath $SCFile -Encoding Oem
-	start-process "CMD.exe" -args @("/C","`"$SCFile`"") -Wait
-	Remove-Item -Path $SCFile -Force -ErrorAction Ignore
-	Remove-Item -Path $regfile -Force -ErrorAction Ignore
-	Remove-Item -Path $StartPin -Force -ErrorAction Ignore
+	}
+	write-output "Disabling Sponsored Apps:"
+	
+	
+			try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" setvalue 'PreInstalledAppsEnabled' 0 4
+	}
+	
+	catch {
+		Write-Error "PreInstalledAppsEnabled Failed"
+	}
+		try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" setvalue 'OemPreInstalledAppsEnabled' 0 4
+	}
+	
+	catch {
+		Write-Error "OemPreInstalledAppsEnabled Failed"
+	}
+
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" setvalue 'SilentInstalledAppsEnabled' 0 4
+	}
+	
+	catch {
+		Write-Error "SilentInstalledAppsEnabled Failed"
+	
+	}
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Windows\System32\config\SOFTWARE" "Policies\Microsoft\Windows\CloudContent" setvalue 'DisableWindowsConsumerFeatures' 1 4
+	}
+	
+	catch {
+		Write-Error "DisableWindowsConsumerFeatures Failed"
+	
+	}
+
+	# try {
+	# & "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Windows\System32\config\SOFTWARE" "Microsoft\PolicyManager\current\device\Start" setvalue 'ConfigureStartPins' "{^`"pinnedList^`": [{}]}"	1
+	# }
+	
+	# catch {
+		# Write-Error "ConfigureStartPins Failed"
+	
+	# }
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" setvalue 'ContentDeliveryAllowed' 0 4
+	}
+	
+	catch {
+		Write-Error "ContentDeliveryAllowed Failed"
+	
+	}
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" setvalue 'FeatureManagementEnabled' 0 4
+	}
+	
+	catch {
+		Write-Error "FeatureManagementEnabled Failed"
+	
+	}
+
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" setvalue 'PreInstalledAppsEverEnabled' 0 4
+	}
+	
+	catch {
+		Write-Error "PreInstalledAppsEverEnabled Failed"
+	
+	}
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" setvalue 'SoftLandingEnabled' 0 4
+	}
+	
+	catch {
+		Write-Error "SoftLandingEnabled Failed"
+	
+	}
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" setvalue 'SubscribedContentEnabled' 0 4
+	}
+	
+	catch {
+		Write-Error "SubscribedContentEnabled Failed"
+	
+	}
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" setvalue 'SubscribedContent-310093Enabled' 0 4
+	}
+	
+	catch {
+		Write-Error "SubscribedContent-310093Enabled Failed"
+	
+	}
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" setvalue 'SubscribedContent-338388Enabled' 0 4
+	}
+	
+	catch {
+		Write-Error "SubscribedContent-338388Enabled Failed"
+	
+	}
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" setvalue 'SubscribedContent-338389Enabled' 0 4
+	}
+	
+	catch {
+		Write-Error "SubscribedContent-338388Enabled Failed"
+	
+	}
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" setvalue 'SubscribedContent-338393Enabled' 0 4
+	}
+	
+	catch {
+		Write-Error "SubscribedContent-338393Enabled Failed"
+	
+	}
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" setvalue 'SubscribedContent-353694Enabled' 0 4
+	}
+	
+	catch {
+		Write-Error "SubscribedContent-353694Enabled Failed"
+	
+	}
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" setvalue 'SubscribedContent-353696Enabled' 0 4
+	}
+	
+	catch {
+		Write-Error "SubscribedContent-353696Enabled Failed"
+	
+	}
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" setvalue 'SubscribedContentEnabled' 0 4
+	}
+	
+	catch {
+		Write-Error "SubscribedContent-353696Enabled Failed"
+	
+	}
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" setvalue 'SystemPaneSuggestionsEnabled' 0 4
+	}
+	
+	catch {
+		Write-Error "SystemPaneSuggestionsEnabled Failed"
+	
+	}
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Windows\System32\config\SOFTWARE" "Policies\Microsoft\PushToInstall" setvalue 'DisablePushToInstall' 1 4
+	}
+	
+	catch {
+		Write-Error "DisablePushToInstall Failed"
+	
+	}
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Windows\System32\config\SOFTWARE" "Policies\Microsoft\MRT" setvalue 'DontOfferThroughWUAU' 1 4
+	}
+	
+	catch {
+		Write-Error "DontOfferThroughWUAU Failed"
+	
+	}
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" deletekey 'Subscriptions'
+	}
+	
+	catch {
+		Write-Error "Subscriptions Failed"
+	
+	}
+	
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Windows\System32\config\SOFTWARE" "Policies\Microsoft\Windows\CloudContent" setvalue 'DisableConsumerAccountStateContent' 1 4
+	}
+	
+	catch {
+		Write-Error "DisableConsumerAccountStateContent Failed"
+	
+	}
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Windows\System32\config\SOFTWARE" "Policies\Microsoft\Windows\CloudContent" setvalue 'DisableCloudOptimizedContent' 1 4
+	}
+	
+	catch {
+		Write-Error "DisableCloudOptimizedContent Failed"
+	
+	}
+	
+	write-output "Enabling Local Accounts on OOBE:"
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Windows\System32\config\SOFTWARE" "Microsoft\Windows\CurrentVersion\OOBE" setvalue "BypassNRO" 1 4
+	}
+	
+	catch {
+	Write-Error "BypassNRO Failed"
+	}
+	
+	write-output "Disabling Reserved Storage:"
+		try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Windows\System32\config\SOFTWARE" "Microsoft\Windows\CurrentVersion\ReserveManager" setvalue "ShippedWithReserves" 0 4
+	
+	}
+	
+	catch {
+	Write-Error "ShippedWithReserves Failed"
+	}
+	
+	write-output "Disable Copilot:"	
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Windows\System32\config\SOFTWARE" "Policies\Microsoft\Windows\WindowsCopilot" setvalue "TurnOffWindowsCopilot" 1 4
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot" setvalue "TurnOffWindowsCopilot" 1 4
+	}
+	
+	catch {
+	Write-Error "Disable Copilot Failed"
+	}
+	
+	write-output "Disabling Chat icon:"
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" setvalue "TaskbarMn" 0 4
+	}
+	
+	catch {
+	Write-Error "TaskbarMn Failed"
+	}
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Windows\System32\config\SOFTWARE" "Policies\Microsoft\Windows\Windows Chat" setvalue "ChatIcon" 3 4
+
+	}
+	
+	catch {
+	Write-Error "ChatIcon Failed"
+	}
+	write-output "Disabling Search icon:"
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" setvalue "ShowCortanaButton" 0 4
+	}
+	
+	catch {
+	Write-Error "ShowCortanaButton Failed"
+	}
+	
+	write-output "Disabling TaskViews icon:"
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" setvalue "ShowTaskViewButton" 0 4
+	}
+	catch {
+	Write-Error "ShowTaskViewButton Failed"
+	}
+	
+	write-output "Aligning Taskbar to left:"
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" setvalue "TaskbarAl" 0 4
+	}
+	catch {
+	Write-Error "TaskbarAl Failed"
+	}
+	write-output "Disabling Widgets icon:"
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" setvalue "TaskbarDa" 0 4
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Taskband\AuxilliaryPins" setvalue "MailPin" 0 4
+	}
+	catch {
+	Write-Error "Disabling Widgets Failed"
+	}
+	write-output "Disabling Hibernate:"
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Windows\System32\config\SYSTEM" "CurrentControlSet\Control\Power" setvalue "HibernateEnabled" 0 4
+	}
+	catch {
+	Write-Error "HibernateEnabled Failed"
+	}
+	
+	write-output "Setting Time Service:"
+	try {
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Windows\System32\config\SYSTEM" "CurrentControlSet\Services\W32Time" setvalue "Start" 2 4
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Windows\System32\config\SYSTEM"  "CurrentControlSet\Services\tzautoupdate" setvalue "Start" 2 4
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Windows\System32\config\SYSTEM" "CurrentControlSet\Services\W32Time\Parameters" setvalue "Type" "NTP" 1
+	& "$($PSScriptRoot)\bin\offlinereg-win64.exe" "$WindowsScratch\Windows\System32\config\SYSTEM" "CurrentControlSet\Services\W32Time\Parameters" setvalue "NtpServer" "time.windows.com,pool.ntp.org" 1
+	}
+	catch {
+	Write-Error "Setting Time Service Failed"
+	}
+
+	$makeSetupC | Out-File -filepath $SetupCFile -Encoding Oem
 	takeown /f "$PSScriptRoot\WindowsScratch\Windows\System32\OneDriveSetup.exe" /a
 	takeown /f "$PSScriptRoot\WindowsScratch\Windows\System32\OneDrive.ico" /a
 	icacls "$PSScriptRoot\WindowsScratch\Windows\System32\OneDriveSetup.exe" /grant:r administrators:F
@@ -242,18 +494,17 @@ if ($CMDs -match "CreateISO") {
 	Enable-WindowsOptionalFeature -Path $WindowsScratch -FeatureName "NetFx3" -Source $WindowsSXSCached -LimitAccess
 	Dismount-WindowsImage -Path $WindowsScratch -Save
 
-$dismcmd = @" 
-"%WINDIR%\System32\dism.exe" /Export-Image /SourceImageFile:(get-childitem -Path ".\WindowsCached\sources\" | Where-Object {$_.Name -eq "install.wim" -or $_.Name -eq "install.esd"}).FullName /SourceIndex:$indexNumber /DestinationImageFile:"$Wim2Path" /compress:recovery /CheckIntegrity
-"@
+	
+
 
 	Export-WindowsImage -SourceImagePath (get-childitem -Path ".\WindowsCached\sources\" | Where-Object {$_.Name -eq "install.wim" -or $_.Name -eq "install.esd"}).FullName -SourceIndex $indexNumber -DestinationImagePath "$Wim2Path" -CompressionType max
 	Remove-Item -Path (get-childitem -Path ".\WindowsCached\sources\" | Where-Object {$_.Name -eq "install.wim" -or $_.Name -eq "install.esd"}).FullName -Force -ErrorAction Ignore
 	Move-Item "$Wim2Path" ".\WindowsCached\sources\install.esd"
 
-	$mkbat | Out-File  -filepath $batchfile -Encoding Oem
+	
 	Copy-Item -Path $Autounattend  -Destination $WindowsCached -Force -Verbose
-	start-process "CMD.exe" -args @("/C","`"$batchfile`"") -Wait
-	Remove-Item -Path $batchfile -Force -ErrorAction Ignore
+
+	& "$($PSScriptRoot)\bin\oscdimg.exe" -m -o -u2 -udfver102 -bootdata:2#p0,e,b"$etfs"`#pEF,e,b"$efisys" "$WindowsCached" "$ModImagePath"
 
 	write-output "Creation completed!"
 
