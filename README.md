@@ -6,9 +6,11 @@ Works on all known builds.
 
 ***RUN AS ADMIN***
 Dev: [Bare OS]
+
 powershell.exe -ep bypass .\dev-image.ps1 [arguments]
 
 Consumer: [Just MS Store and XBOX]
+
 powershell.exe -ep bypass .\con-image.ps1 [arguments]
 
 
