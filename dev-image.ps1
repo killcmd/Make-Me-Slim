@@ -23,8 +23,6 @@ $currentTime = Get-Date -format "dd-MMM-yyyy_HH-mm-ss"
 $CDir = get-location
 $WorkPath = $CDir.Path
 $Autounattend = $CDir.Path + "\xml\autounattend.xml"
-$WimPathArg = (get-childitem -Path ".\WindowsCached\sources\" | Where-Object {$_.Name -eq "install.wim" -or $_.Name -eq "install.esd"}).FullName
-$WimPath = $WimPathArg
 $ImagePath = (get-childitem -Path ".\input\" | Where-Object {$_.Name -like "*.iso"}).FullName
 $ModImagePath = $CDir.Path + "\output\Windows_trimmed.iso"
 $Wim2Path = $CDir.Path + "\WindowsCached\sources\install-1.esd"
@@ -47,43 +45,79 @@ $WindowsPackageLog = $CDir.Path + "\wplog_$currentTime.txt"
 $OOBEappsDir = $CDir.Path + "\oobe\Setup"
 $OOBEapps = $OOBEappsDir + "\*"
 
+$DisabledAPPS = @(
+"Microsoft.ZuneMusic",
+"Microsoft.ZuneVideo",
+"Microsoft.WindowsSoundRecorder",
+"Microsoft.WebMediaExtensions",
+"Microsoft.RawImageExtension",
+"Microsoft.HEIFImageExtension",
+"Microsoft.HEVCVideoExtension",
+"Microsoft.VP9VideoExtensions",
+"Microsoft.WebpImageExtension",
+"Microsoft.DolbyAudioExtensions",
+"Microsoft.AVCEncoderVideoExtension",
+"Microsoft.MPEG2VideoExtension",
+"Microsoft.SecHealthUI",
+"Microsoft.DesktopAppInstaller",
+"Microsoft.Windows.Photos",
+"Microsoft.WindowsCamera",
+"Microsoft.WindowsNotepad",
+"Microsoft.Paint",
+"Microsoft.WindowsTerminal",
+"Microsoft.WindowsAlarms",
+"Microsoft.WindowsCalculator",
+"Microsoft.MicrosoftStickyNotes"
+)
+
 $Applist = @(
-	"*Microsoft.GetHelp*",
-	"*Microsoft.Getstarted*",
-	"*Microsoft.MicrosoftOfficeHub*",
-	"*Microsoft.MicrosoftSolitaireCollection*",
-	"*Microsoft.People*",
-	"*Microsoft.OutlookFor*",
-	"*Microsoft.WindowsMaps*",
-	"*Microsoft.WindowsAlarms*",
-	"*Microsoft.Todos*",
-	"*Microsoft.Bing*",
-	"*Microsoft.Messaging*",
-	"*Microsoft.BingFinance*",
-	"*Microsoft.WindowsScan*",
-	"*Microsoft.Reader*",
-	"*Microsoft.CommsPhone*",
-	"*Microsoft.ConnectivityStore*",
-	"*Microsoft.WindowsReadingList*",
-	"*Clipchamp.Clipchamp*",
-	"*Microsoft.SkypeApp*",
-	"*microsoft.windowscommunicationsapps*",
-	"*microsoft.WindowsSoundRecorder*",
-	"*Microsoft.WindowsFeedbackHub*",
-	"*MicrosoftCorporationII.MicrosoftFamily*",
-	"*Microsoft.PowerAutomateDesktop*",
-	"*Microsoft.YourPhone*",
-	"*Teams*",
-	"*Microsoft.549981C3F5F10*",
-	"*Microsoft.Windows.DevHome*",
-	"*Microsoft.ZuneMusic*",
-	"*Microsoft.Windows.Ai.Copilot.Provider*",
-	"*Microsoft.ZuneVideo*",
-	"*MicrosoftWindows.CrossDevice*"
+"Microsoft.WindowsStore",
+"Microsoft.StorePurchaseApp",
+"Microsoft.XboxSpeechToTextOverlay",
+"Microsoft.XboxGameOverlay",
+"Microsoft.XboxIdentityProvider",
+"Microsoft.GamingApp",
+"Microsoft.XboxGamingOverlay",
+"Microsoft.Xbox.TCUI",
+"MicrosoftWindows.Client.WebExperience",
+"Microsoft.WindowsMaps",
+"Microsoft.ScreenSketch",
+"microsoft.windowscommunicationsapps",
+"Microsoft.People",
+"Microsoft.BingNews",
+"Microsoft.BingWeather",
+"Microsoft.MicrosoftSolitaireCollection",
+"Microsoft.MicrosoftOfficeHub",
+"Microsoft.WindowsFeedbackHub",
+"Microsoft.GetHelp",
+"Microsoft.Getstarted",
+"Microsoft.Todos",
+"Microsoft.PowerAutomateDesktop",
+"Microsoft.549981C3F5F10",
+"MicrosoftCorporationII.QuickAssist",
+"MicrosoftCorporationII.MicrosoftFamily",
+"Microsoft.OutlookForWindows",
+"MicrosoftTeams",
+"Microsoft.Windows.DevHome",
+"Microsoft.BingSearch",
+"Microsoft.ApplicationCompatibilityEnhancements",
+"MicrosoftWindows.CrossDevice",
+"MSTeams",
+"Microsoft.YourPhone",
+"Clipchamp.Clipchamp",
+"Microsoft.Whiteboard",
+"microsoft.microsoftskydrive",
+"Microsoft.MicrosoftTeamsforSurfaceHub",
+"MicrosoftCorporationII.MailforSurfaceHub",
+"Microsoft.MicrosoftPowerBIForWindows",
+"Microsoft.SkypeApp",
+"Microsoft.Office.Excel",
+"Microsoft.Office.PowerPoint",
+"Microsoft.Office.Word"
 )
 
 $Applist2 = @(
-	"Microsoft-Windows-Kernel-LA57-FoD-Package*"
+	"Microsoft-Windows-Kernel-LA57-FoD-Package"
 )
 
 $makeSC = @"
@@ -114,6 +148,7 @@ echo Aligning Taskbar to left:
 "%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" setvalue "TaskbarAl" 0 4
 echo Disabling Widgets icon:
 "%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" setvalue "TaskbarDa" 0 4
+"%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Users\Default\ntuser.dat" "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Taskband\AuxilliaryPins" setvalue "MailPin" 0 4
 echo Disabling Hibernate:
 "%~dp0bin\offlinereg-win64.exe" "%~dp0WindowsScratch\Windows\System32\config\SYSTEM" "CurrentControlSet\Control\Power" setvalue "HibernateEnabled" 0 4
 echo Setting Time Service:
@@ -173,12 +208,12 @@ if ($CMDs -match "CreateISO") {
 
 	foreach ($app in $Applist)
 	{
-		Get-AppXProvisionedPackage -path $WindowsScratch | where-object {$_.PackageName -like $app} | Remove-AppxProvisionedPackage -LogPath $appxlog -ErrorAction Ignore
+		Get-AppXProvisionedPackage -path $WindowsScratch | where-object {$_.DisplayName -match $app} | Remove-AppxProvisionedPackage -LogPath $appxlog -ErrorAction Ignore
 	}
 
 	foreach ($app2 in $Applist2)
 	{
-		Get-WindowsPackage -Path $WindowsScratch | where-object {$_.PackageName -like $app2} | Remove-WindowsPackage -LogPath $WindowsPackageLog -ErrorAction Ignore
+		Get-WindowsPackage -Path $WindowsScratch | where-object {$_.PackageName -match $app2} | Remove-WindowsPackage -LogPath $WindowsPackageLog -ErrorAction Ignore
 	}
 	
 	If (!(Test-Path $SetupCPath)) {
